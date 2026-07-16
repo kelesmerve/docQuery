@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+
+# Proje çıktıları — gerçek veri içerebilir
+results/
+anonymization_dict.json
+
+# Giriş belgeleri — müşteri verisi
+test_input/
+test-images/
+
+# Ortam
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
