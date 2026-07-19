@@ -14,8 +14,79 @@ anonymization_dict.json
 test_input/
 test-images/
 
+# Test dosyalari, fixture'lar ve musteri veri dizinleri (tum alt dizinlerle)
+tests/
+test/
+test_data/
+test-data/
+fixtures/
+data/
+customer_data/
+customer-data/
+uploads/
+input/
+inputs/
+output/
+outputs/
+reports/
+exports/
+logs/
+backups/
+
+# Yerel vektor veritabani ve snapshot'lar
+qdrant_storage/
+qdrant_data/
+snapshots/
+*.snapshot
+*.db
+*.sqlite
+*.sqlite3
+
+# Dizin disina kopyalanan belgeler, gorseller ve veri disa aktarimlari
+*.md
+!/README.md
+*.txt
+!requirements*.txt
+*.json
+*.jsonl
+*.csv
+*.tsv
+*.parquet
+*.pdf
+*.doc
+*.docx
+*.xls
+*.xlsx
+*.ppt
+*.pptx
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.gif
+*.bmp
+*.tif
+*.tiff
+*.eml
+*.msg
+*.pst
+*.ost
+*.log
+*.bak
+*.zip
+*.7z
+*.rar
+*.tar
+*.gz
+
 # Ortam
 .env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
 
 # IDE
 .vscode/

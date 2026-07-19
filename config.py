@@ -2,6 +2,9 @@
 config.py — Proje genelinde sabitler ve yol çözümleme
 """
 import os
+from dotenv import load_dotenv
+
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 
 # ---------------------------------------------------------------------------
 # Dizinler
