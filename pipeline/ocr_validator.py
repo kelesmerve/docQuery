@@ -106,8 +106,8 @@ def validate_with_ocr(image_path: str, img_type: str, vlm_text: str) -> dict:
         ocr_text, confidence = _ocr_easyocr(image_path)
         result["engine_used"] = "easyocr"
     else:
-        # OCR mevcut değil — skoru nötr bırak
-        result["needs_review"] = False
+        # OCR yoksa doğrulanmış kabul etme.
+        result["needs_review"] = True
         return result
 
     sim = _similarity(vlm_text, ocr_text)

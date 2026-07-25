@@ -47,9 +47,10 @@ def collect_qa_issues(state: dict, existing_issues=None) -> list:
     # --- 1. OCR güven skoru ---
     for img_path, val in val_results.items():
         conf = val.get("ocr_confidence", 1.0)
-        if val.get("needs_review") and conf < 0.5:
+        if val.get("needs_review"):
             issues.append(
-                f"[OCR] Dusuk guven ({conf:.2f}) - gorsel okumasi supheli: {img_path}"
+                f"[OCR] Dogrulama inceleme gerektiriyor (guven {conf:.2f}, "
+                f"benzerlik {val.get('similarity_score', 0):.2f}): {img_path}"
             )
 
     # --- 2. Eksik görsel açıklaması ---

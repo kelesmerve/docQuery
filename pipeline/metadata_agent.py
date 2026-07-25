@@ -10,7 +10,8 @@ alanlarını doldurur ve belgenin başına yazar.
 """
 
 import re
-import requests
+import os
+from pipeline import model_http
 
 from config import VLLM_URL, VLLM_MODEL
 
@@ -27,10 +28,12 @@ def _vllm_call(prompt: str, max_tokens: int = 256) -> str:
         "seed": 42,
     }
     try:
-        r = requests.post(VLLM_URL, json=payload, timeout=60)
+        r = model_http.post(VLLM_URL, json=payload, timeout=60)
         r.raise_for_status()
         return r.json()["choices"][0]["message"]["content"].strip()
     except Exception as e:
+        if os.getenv('DOCQUERY_STRICT') == '1':
+            raise
         return f"HATA: {e}"
 
 

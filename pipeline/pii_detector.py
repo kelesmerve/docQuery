@@ -6,7 +6,8 @@ Qwen erişilemez durumdaysa regex fallback devreye girer.
 """
 
 import re
-import requests
+import os
+from pipeline import model_http
 
 from config import VLLM_URL, VLLM_MODEL
 
@@ -63,7 +64,7 @@ def _detect_via_vllm(text: str) -> list:
             "seed": 42,
             "max_tokens": 256,
         }
-        r = requests.post(VLLM_URL, json=payload, timeout=30)
+        r = model_http.post(VLLM_URL, json=payload, timeout=30)
         r.raise_for_status()
         content = r.json()["choices"][0]["message"]["content"].strip()
         if content.upper() == "YOK" or not content:
@@ -92,6 +93,8 @@ def detect_person_names(text: str) -> list:
                 names.append(n)
         return names
     except PIIDetectionError:
+        if os.getenv('DOCQUERY_STRICT') == '1':
+            raise
         # Fallback: sadece regex
         names = _detect_via_regex(text)
         if names:

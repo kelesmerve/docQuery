@@ -1,0 +1,6 @@
+-r requirements-rag.txt
+Flask>=3.1,<4
+waitress>=3,<4
+markdown-it-py>=3,<5
+Pillow>=10
+langgraph>=0.2,<2

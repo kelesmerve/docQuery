@@ -11,8 +11,9 @@ code_extractor_node / code_injector_node halleder.
 """
 
 import re
+import os
 import base64
-import requests
+from pipeline import model_http
 
 from config import VLLM_URL, VLLM_MODEL
 
@@ -77,10 +78,12 @@ def _call_enrichment_vllm(image_path: str, prompt: str) -> str:
             ]}],
             "temperature": 0, "seed": 42, "max_tokens": 800,
         }
-        r = requests.post(VLLM_URL, json=payload, timeout=120)
+        r = model_http.post(VLLM_URL, json=payload, timeout=120)
         r.raise_for_status()
         return r.json()["choices"][0]["message"]["content"].strip()
     except Exception as e:
+        if os.getenv('DOCQUERY_STRICT') == '1':
+            raise
         return f"[Zenginlestirme hatasi: {e}]"
 
 
@@ -91,10 +94,12 @@ def _call_text_vllm(prompt: str, max_tokens: int = 1500) -> str:
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0, "seed": 42, "max_tokens": max_tokens,
         }
-        r = requests.post(VLLM_URL, json=payload, timeout=180)
+        r = model_http.post(VLLM_URL, json=payload, timeout=180)
         r.raise_for_status()
         return r.json()["choices"][0]["message"]["content"].strip()
     except Exception as e:
+        if os.getenv('DOCQUERY_STRICT') == '1':
+            raise
         print(f"[Yapilandirma] vLLM hatasi: {e}")
         return ""
 
@@ -145,7 +150,8 @@ def enrich_vision_output(image_path: str, img_type: str,
     prompt = (_PROMPT_TERMINAL if img_type == "terminal" else _PROMPT_GUI).format(
         context=context or "Exchange Server teknik dokumani"
     )
-    real_path = image_path.replace("images/", "test-images/")
+    from config import resolve_image_path
+    real_path = resolve_image_path(image_path)
     result = _call_enrichment_vllm(real_path, prompt)
     if result.startswith("[Zenginlestirme hatasi"):
         return format_vision_output(raw_vlm)
@@ -274,6 +280,8 @@ def restructure_body(content: str, use_restructure: bool = True) -> str:
 
     MAX_BODY_CHARS = 8000
     if len(body_with_placeholders) > MAX_BODY_CHARS:
+        if os.getenv('DOCQUERY_STRICT') == '1':
+            raise ValueError('Belge model sınırını aşıyor; daha küçük bölümlere ayırın.')
         body_truncated = body_with_placeholders[:MAX_BODY_CHARS] + "\n[...]"
         print(f"[Yapilandirma] Govde {len(body_with_placeholders)} karakter, {MAX_BODY_CHARS}'e kisaltildi.")
     else:

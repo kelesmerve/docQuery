@@ -16,7 +16,7 @@ Akış:
 import re
 import os
 import base64
-import requests
+from pipeline import model_http
 import operator
 from typing import Annotated
 
@@ -100,7 +100,7 @@ def call_vision_vllm(image_path: str) -> str:
         ]}],
         "temperature": 0.1, "seed": 42, "max_tokens": 2048,
     }
-    r = requests.post(VLLM_URL, json=payload, timeout=120)
+    r = model_http.post(VLLM_URL, json=payload, timeout=120)
     r.raise_for_status()
     return r.json()["choices"][0]["message"]["content"]
 
@@ -146,6 +146,8 @@ def vision_validation_worker(state: ImageState) -> dict:
     try:
         vlm_text = call_vision_vllm(real_img_path)
     except Exception as e:
+        if os.getenv('DOCQUERY_STRICT') == '1':
+            raise
         vlm_text = f'HATA: {e}'
 
     print(f'[Dogrulama] Isleniyor: {real_img_path}')
@@ -219,6 +221,8 @@ def anonymize_node(state: PipelineState) -> dict:
             names  = detect_person_names(t)
             mapping = register_person_names(names, mapping)
         except PIIDetectionError as e:
+            if os.getenv('DOCQUERY_STRICT') == '1':
+                raise
             new_issues.append(f"[PII] Kisi ismi tespiti basarisiz: {e}")
 
     # Uygula
@@ -289,15 +293,23 @@ def code_extractor_node(state: PipelineState) -> dict:
 # ---------------------------------------------------------------------------
 def enrich_node(state: PipelineState) -> dict:
     print("[Zenginlestirme] Gorsel yorumlari uretiliyor...")
+    content = state['markdown_content']
+    codes = dict(state.get('extracted_codes') or {})
+    # Enricher needs image references to attach descriptions; it protects them
+    # itself during restructuring. Executable code remains hidden from the model.
+    for key, value in list(codes.items()):
+        if re.fullmatch(r'!\[.*?\]\([^)]+\)', value):
+            content = content.replace(key, value)
+            del codes[key]
     enriched = enrich(
-        state['markdown_content'],
+        content,
         state['vision_outputs'],
         state['validation_results'],
         use_enrichment=True,
         anonymization_map=state.get('anonymization_map'),
     )
     print("[Zenginlestirme] Tamamlandi.")
-    return {"enriched_content": enriched}
+    return {"enriched_content": enriched, "extracted_codes": codes}
 
 
 # ---------------------------------------------------------------------------
@@ -307,6 +319,7 @@ def code_injector_node(state: PipelineState) -> dict:
     """Qwen'in yapılandırdığı metne orijinal kod bloklarını geri yerleştirir."""
     content = state['enriched_content']
     codes   = state.get('extracted_codes') or {}
+    missing = [key for key in codes if key not in content]
 
     for key, original in codes.items():
         content = content.replace(key, original)
@@ -316,8 +329,9 @@ def code_injector_node(state: PipelineState) -> dict:
         print(f"[KodInjector] UYARI: {lost} placeholder Qwen tarafindan kaybedildi, temizlendi.")
     content = re.sub(r'\[\[SECURE_CODE_BLOCK_\d+\]\]', '', content)
 
-    print(f"[KodInjector] {len(codes) - lost} blok geri yuklendi.")
-    return {"enriched_content": content}
+    print(f"[KodInjector] {len(codes) - len(missing)} blok geri yuklendi.")
+    return {"enriched_content": content,
+            "qa_issues": [f"[KOD] {len(missing)} korunan blok model çıktısında kayboldu."] if missing else []}
 
 
 # ---------------------------------------------------------------------------

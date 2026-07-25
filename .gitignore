@@ -16,6 +16,7 @@ test-images/
 
 # Test dosyalari, fixture'lar ve musteri veri dizinleri (tum alt dizinlerle)
 tests/
+web_tests/
 test/
 test_data/
 test-data/
@@ -96,3 +97,10 @@ snapshots/
 # OS
 .DS_Store
 Thumbs.db
+
+# Web workspace: uploads, outputs, progress and per-job dictionaries
+.web-data/
+!docs/screenshots/studio.png
+!docs/screenshots/mobile.png
+!docs/screenshots/document-studio.png
+!docs/screenshots/previous-local-answer.png
