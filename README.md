@@ -1,290 +1,166 @@
 # DocQuery
 
-## Arayüz ekran görüntüleri
+**Teknik belgeleri işle, kalitesini kontrol et ve kaynaklarıyla birlikte sorgula.**
 
-Kullanıcının seçtiği iki ekran görüntüsü:
+DocQuery, Exchange Server belgelerini ve ekran görüntülerini işleyen Python tabanlı bir uygulamadır. LangGraph belge işleme akışını yönetir; Qwen/VLM ve OCR görsellerin okunmasını, Qdrant ise onaylı belgeler üzerinden kaynaklı soru-cevap akışını sağlar.
+
+## Belge stüdyosu
+
+Markdown belgeni ve ilişkili görselleri yükle, işlemi başlat ve ilerlemeyi takip et. Tamamlanan belgenin kalite uyarılarını incele, çıktıyı önizle veya Markdown olarak indir.
 
 ![DocQuery belge stüdyosu](docs/screenshots/document-studio.png)
 
-![Önceki yerel alıntı görünümü ve kaynak görseli](docs/screenshots/previous-local-answer.png)
+- **Belge ve görsel yükleme:** UTF-8 Markdown, PNG, JPG ve WebP desteği.
+- **Belge işleme:** Görsel okuma, OCR doğrulaması, anonimleştirme ve zenginleştirme.
+- **Kalite kontrolü:** Eksik açıklama, OCR güveni ve kişisel bilgi kontrolleri.
+- **İşlem takibi:** Gerçek LangGraph adımları, tamamlanma ve hata durumları.
+- **Sonuç inceleme:** Metadata, Markdown önizleme ve dosya indirme.
 
-İkinci görüntü kaldırılan geçici yerel alıntı yönteminin önceki görünümüdür;
-Qdrant veya Qwen modelinin ürettiği bir yanıtı göstermez. Güncel **Bilgiye sor**
-ekranı `/api/ask` üzerinden gerçek Qdrant → embedding → yanıt modeli akışını
-kullanır. Servisler çalışmıyorsa hata gösterilir; yerel yedek yanıt üretilmez.
-Bu iki dosya kullanıcı tarafından README için özellikle seçilmiştir; orijinal
-belge ve görsel klasörleri Git dışında tutulmaya devam eder.
+## Kaynaklı soru-cevap
 
-## Web arayüzü — Belge stüdyosu
+Kalite kontrolünden geçen belgeleri **Onaylıları indeksle** ile Qdrant'a aktar. Ardından **Bilgiye sor** ekranında sorunu yaz. İlgili belge parçaları modele bağlam olarak gönderilir; yanıtla birlikte kaynak metinleri, dosya adları ve parça numaraları gösterilir.
 
-### Önceden üretilmiş iki yerel sonuç
+![Yanıt ve kaynakların birlikte gösterildiği arayüz](docs/screenshots/previous-local-answer.png)
 
-Sayfanın üstündeki **Önceden üretilmiş sonuçlar** bölümünden **DAG kurulumu**
-ve **Exchange HealthCheck** seçilebilir. Bu bölüm model gerektirmez; yeni OCR/AI
-işi oluşturmaz, pipeline adımlarını tamamlanmış olarak işaretlemez, QA onayı
-veya indekslenmiş olma iddiasında bulunmaz.
+*Bu görüntü önceki yerel alıntı prototipine aittir. Güncel soru-cevap akışı Qdrant, embedding servisi ve Qwen/VLM kullanır; görseldeki yanıt bir model çıktısı değildir.*
 
-Okuma sırası: `results/approved/ÖRNEK ÇIKTI --- <belge>.md`, sonra
-`results/approved/<belge>.md`, sonra `test_input/<belge>.md`.
-Arayüz seçilen gerçek dosya yolunu gösterir. Mevcut yerel dosyalarda DAG sonucu
-`results/approved/` içindeki kopyadan, HealthCheck `test_input/` içinden okunur.
-`test_input` konumu bu iki sonuç için yeni işlem girdisi anlamına gelmez.
+Kaynak bulunamadığında veya bir servise ulaşılamadığında durum ekranda belirtilir. Hazır belge önizlemesi, belgenin otomatik olarak indekslendiği anlamına gelmez.
 
-YAML front matter metadata olarak gösterilir; olmayan alanlar üretilmez.
-**Sonuç Markdown** özgün metni gösterir; indirme dosyanın baytlarını değiştirmez.
-`test-images/` içindeki belge adına ait görseller galeride açılır ve indirilebilir.
-Doğrudan Markdown referansı eşleşen görseller belge içine de yerleştirilir.
-Uzak OneNote görselleri indirilmez ve yerel dosyalara tahminen bağlanmaz.
-Görsellere bu görünümde yeni anonimleştirme uygulanmaz.
+## Kurulum
 
-Dosyalar yerlerinde kalır; ham belgeler ve kaynak görseller repoya eklenmez.
-README için kullanıcının seçtiği yukarıdaki iki görüntü istisnadır.
-Örnekler otomatik olarak RAG indeksine alınmaz.
-Yerel doğrulama (sunucu açık, Edge kurulu):
+**Gereksinimler:** Python 3.11+, Qdrant, OpenAI uyumlu bir görsel/sohbet modeli servisi ve ayrı bir embedding servisi. Görsel doğrulaması için OCR kurulumu gerekir.
 
-```powershell
-.venv\Scripts\python web_tests/examples_browser.py
-```
+Arayüz Flask, HTML, CSS ve JavaScript kullanır. Node.js veya frontend derlemesi gerekmez.
 
-Bu test sadece görüntüleme ve indirmeyi kontrol eder; iş başlatmaz.
-İki belge, dokuz yerel görsel, görsel büyütme, Markdown görünümü ve özgün
-dosyayla birebir indirme Edge ile kontrol edildi. Mobil yatay taşma veya
-JavaScript hatası görülmedi; test sırasında POST isteği gönderilmedi.
-
-8080 başka bir uygulama süreci tarafından kullanılıyorsa farklı port seçilebilir:
-
-```powershell
-$env:DOCQUERY_PORT="8081"
-.venv\Scripts\python web.py
-# Tarayıcı: http://127.0.0.1:8081
-```
-
-Python merkezli projeye **Flask + HTML/CSS/JavaScript** eklendi. Node veya frontend
-derlemesi gerektirmez; mevcut LangGraph akışı ve `rag.RAG` kullanılır. Waitress
-yerel HTTP sunucusudur. Mobil görünüm, klavye ile kullanım, gerçek işlem adımları,
-kalite uyarıları, Markdown önizleme/indirme ve kaynak parçalı soru-cevap içerir.
-
-### Kurulum ve çalıştırma
-
-Python 3.11+ ile, proje kökünde:
+Proje kökünde, Windows PowerShell ile:
 
 ```powershell
 python -m venv .venv
 .venv\Scripts\python -m pip install -r requirements-web.txt
-# Yalnızca .env henüz yoksa:
+
+# Yalnızca .env dosyası henüz yoksa:
 Copy-Item .env.example .env
-# .env içindeki servis adreslerini ve model adlarını düzenleyin.
+```
+
+Linux/macOS'ta `.venv\Scripts\python` yerine `.venv/bin/python` kullanın.
+
+### Servis ayarları
+
+`.env` dosyasını çalışan servislerinize göre düzenleyin:
+
+| Ayar | Açıklama |
+| --- | --- |
+| `VLLM_URL` | Görsel/sohbet modelinin `/v1/chat/completions` adresi |
+| `VLLM_MODEL` | Serviste yüklü Qwen/VLM modelinin adı |
+| `EMBEDDING_URL` | Embedding servisinin `/v1/embeddings` adresi |
+| `EMBEDDING_MODEL` | Türkçe destekli embedding modelinin adı |
+| `QDRANT_URL` | Qdrant adresi; varsayılan `http://localhost:6333` |
+
+Gerekiyorsa `VLLM_API_KEY`, `EMBEDDING_API_KEY` ve `QDRANT_API_KEY` alanlarını doldurun. Model servisleri ayrıca başlatılmalıdır; `.env` ayarları bu servisleri kurmaz.
+
+Docker kurulu ve çalışır durumdayken Qdrant'ı başlatın:
+
+```powershell
+docker compose up -d qdrant
+```
+
+OCR için sisteminizde **Tesseract ve tur/eng dil paketlerini** kurun. Python OCR paketleri dahil tam belge işleme bağımlılıkları `requirements.txt` dosyasındadır:
+
+```powershell
+.venv\Scripts\python -m pip install -r requirements.txt
+```
+
+### Uygulamayı çalıştırma
+
+```powershell
 .venv\Scripts\python web.py
 ```
 
-Tarayıcı: **http://127.0.0.1:8080**. Linux/macOS'ta `.venv/bin/python` kullanın.
-Servisler kapalıyken de arayüz açılır; uydurma belge veya yanıt göstermez.
-`.env` değişikliklerinden sonra sunucuyu yeniden başlatın.
-
-| Bileşen | Gereken ayar / kurulum |
-| --- | --- |
-| Belge işleme ve yanıt modeli | `VLLM_URL`, `VLLM_MODEL`; görseller için vision destekli OpenAI uyumlu chat endpoint. İsteğe bağlı `VLLM_API_KEY`. |
-| Embedding | `EMBEDDING_URL`, `EMBEDDING_MODEL`; Türkçe destekli `/v1/embeddings` servisi. İsteğe bağlı `EMBEDDING_API_KEY`. |
-| Qdrant | `docker compose up -d qdrant`; `QDRANT_URL`, gerekiyorsa `QDRANT_API_KEY`. |
-| Görsel doğrulama | `pip install pytesseract` ve sistemde Tesseract `tur+eng` dil paketleri. Alternatif motor için `pip install easyocr`. Mevcut tam pipeline bağımlılıkları `requirements.txt` içinde. |
-
-OCR kurulmamışsa görsel kontrolü başarılı sayılmaz; belge incelemeye yönlendirilir.
-Servis durum göstergesi `/models` veya Qdrant `/collections` erişimini kontrol eder;
-model yüklenmesini veya üretim kalitesini garanti etmez. `/models` sağlamayan uyumlu
-servislerde gösterge erişilemez diyebilir; gerçek işlem çağrısı yine denenebilir.
-
-### Kullanım
-
-1. UTF-8 `.md` belge seçin. PDF/DOCX dönüşümü bu sürümde yoktur.
-2. Belgedeki görselleri ayrıca ekleyin: PNG/JPG/WebP, en fazla 20 adet, toplam
-   istek boyutu 25 MB. Referansın dosya adı yüklemeyle aynı olmalı
-   (`images/ekran.png` → `ekran.png`).
-3. **Belgeyi yükle**, ardından belge satırındaki **İşlemi başlat** düğmesine basın.
-   Durumlar: hazır → sırada → işleniyor → onaylı / inceleme gerekli / başarısız.
-   İlerleme tamamlanan LangGraph düğümleridir, tahmini yüzde değildir.
-4. **İncele** ile kalite uyarılarını, biçimlendirilmiş belgeyi veya Markdown
-   kaynağını görün; **Markdown indir** ile çıktıyı alın. Ham görseller PII
-   içerebileceğinden önizlemede gösterilmez; görsel açıklamaları metinde kalır.
-5. **Onaylıları indeksle** yalnızca QA onaylı web belgelerini Qdrant'a aktarır.
-   Uyarılı belgeleri zorla onaylama yoktur; kaynağı düzeltip tekrar yükleyin.
-6. **Bilgiye sor** ekranından sorun. Yanıtla birlikte belge, parça numarası,
-   benzerlik ve kaynak metni gösterilir. Kaynak yoksa veya servis hata verirse
-   bu durum açıkça belirtilir.
-
-Web yüklemeleri, durumları, çıktıları ve belgeye özel anonimleştirme sözlükleri
-`.web-data/` altında kalır; tamamı Git dışında tutulur. Yükleme akışı mevcut
-şirket belgelerini kendiliğinden işlemez. Yukarıdaki iki seçili yerel sonuç
-salt okunur örnek panelinde gösterilir.
-Web Qdrant alias'ı `WEB_QDRANT_COLLECTION=docquery_web_documents` olup CLI
-indeksinden ayrıdır. İndeks tamamlanmadan aktif alias değiştirilmez.
-Anonimleştirme eşleştirmeleri web belgeleri arasında ortak değildir.
-
-Bu sürüm tek kullanıcılı yerel uygulamadır; `127.0.0.1` üzerinde tek sunucu
-çalıştırın. İşler sırayla, ayrı pipeline süreçlerinde yürütülür (30 dakika
-sınırı). Durumlar diskte saklanır; yeniden başlatmada yarım işler yeniden
-denenebilir hata durumuna alınır. Kullanıcı yönetimi ve dağıtık görev kuyruğu yoktur.
-Yüklenen içerik işlem sırasında yapılandırılmış model servislerine gönderilir.
-Ham HTML çalıştırılmaz, harici görseller yüklenmez, yükleme boyutu ve dosya
-türleri doğrulanır; POST istekleri oturum token'ı gerektirir.
-
-### Ekran görüntüleri
-
-Çalışan uygulamanın **boş çalışma alanı**, gerçek servis durumlarıyla çekildi.
-Şirket belgesi veya örnek sonuç içermez.
-
-![DocQuery masaüstü belge stüdyosu](docs/screenshots/studio.png)
-
-<img src="docs/screenshots/mobile.png" alt="DocQuery 390 piksel mobil görünüm" width="300">
-
-### Doğrulama
+Tarayıcıda **http://127.0.0.1:8080** adresini açın. Başka bir port kullanmak için:
 
 ```powershell
-.venv\Scripts\python -m unittest discover -s web_tests -v
-.venv\Scripts\python -m unittest discover -s tests -v
-# Ayrı terminalde web.py çalışırken, Microsoft Edge kurulu Windows üzerinde:
-.venv\Scripts\python -m pip install playwright
-.venv\Scripts\python web_tests/browser_smoke.py
+$env:DOCQUERY_PORT="8081"
+.venv\Scripts\python web.py
 ```
 
-Tarayıcı testi sentetik bir belge yükler ve gerçek servisleri çağırır; yalnızca
-boş çalışma alanında ekran görüntüsü yazar. Test belgesi `.web-data/` içinde kalır.
-Testler şirket verisi kullanmaz. API/pipeline testlerindeki sentetik model
-yanıtları ve bellek içi Qdrant yalnızca testlerde kullanılır; uygulamada demo modu yoktur.
-
-26 Eylül 2026 doğrulaması: 20 web/pipeline ve mevcut 8 RAG testi geçti; Edge ile
-1440 px masaüstü ve 390 px mobil görünüm, gezinme, soru gönderme, yükleme ve
-işlem başlatma kontrol edildi. JavaScript hatası veya mobil yatay taşma görülmedi.
-Bu ortamda vLLM ve Qdrant erişilemiyordu, embedding modeli ayarlanmamıştı;
-gerçek başarılı model üretimi ve uzak Qdrant indekslemesi doğrulanamadı.
-Tarayıcıda servis hatası akışı doğrulandı. Başarı yolları test doubles ve bellek
-içi Qdrant ile doğrulandı; bunlar gerçek servis entegrasyonu testi değildir.
-
-Dosya yükleme ve güvenlik yaklaşımı için:
-[Flask güvenlik belgeleri](https://flask.palletsprojects.com/en/stable/web-security/).
-
-## Qdrant ile RAG / Soru-cevap
-
-`rag.py`, yalnızca `results/approved/**/*.md` belgelerini parçalara ayırıp
-embedding vektörleriyle Qdrant'a yükler. İlgili parçalar mevcut vLLM modeline
-gönderilir; Türkçe yanıt ve kaynak dosya/parça bilgileri döner.
-`needs_review` ve ham belgeler indekslenmez. Kullanım komut satırındandır.
-
-```powershell
-pip install -r requirements-rag.txt
-docker compose up -d qdrant
-# .env yoksa .env.example dosyasını .env olarak kopyalayın.
-# EMBEDDING_URL ve EMBEDDING_MODEL değerlerini çalışan servisinize göre doldurun.
-# Yanıt üretimi için VLLM_URL ve VLLM_MODEL değerlerini ayarlayın.
-python rag.py index
-python rag.py ask "Exchange DAG nasıl yapılandırılır?"
-python rag.py ask "Sertifika yenileme adımları nelerdir?" --top-k 5 --json
-```
-
-Embedding servisi `/v1/embeddings` biçiminde `model` ve `input` kabul etmeli,
-`data` içinde `index` ve `embedding` döndürmelidir. Türkçe destekleyen bir
-embedding modeli kullanın; sohbet modelinin embedding ürettiğini varsaymayın.
-Modeli değiştirdiğinizde yeniden indeksleyin. `.env` otomatik yüklenir.
-RAG bağımlılıkları ayrıdır; belge üretmek için ana `requirements.txt` de gereklidir.
-
-Her `index` çalışması yeni bir tam koleksiyon oluşturur; tüm yükleme başarılı
-olduğunda aktif alias yeni koleksiyona geçirilir. Güncellenen/silinen belgeler
-bir sonraki başarılı indekslemede yansır. Boş dizin indekslenmez ve önceki
-indeks korunur. İndekslemeleri aynı anda çalıştırmayın. Eski ve başarısız
-yükleme koleksiyonları otomatik silinmez; disk kullanımı için Qdrant üzerinden
-kullanılmayanları temizleyin. `QDRANT_COLLECTION` yeni bir alias adı olmalıdır;
-mevcut fiziksel koleksiyonun adını kullanmayın.
-
-Parça boyutu/örtüşmesi karakter cinsindendir. `RAG_SCORE_THRESHOLD` kosinüs
-benzerlik eşiğidir; modelinize göre ayarlayın. Kaynak bulunamazsa yanıt modeli
-çağrılmaz. Kaynak gösterme ve bilgi yetersizliğini belirtme talimatları modele
-verilir; yanıt doğruluğu ayrıca değerlendirilmelidir. Onay durumu değiştiğinde
-indekslemeyi tekrar çalıştırın.
-
-Testler (harici model veya Docker gerektirmez):
-
-```powershell
-python -m unittest discover -s tests -v
-```
-
-Referans: [Qdrant Python istemcisi](https://github.com/qdrant/qdrant-client),
-[alias API'si](https://api.qdrant.tech/api-reference/aliases/update-aliases).
-
-Exchange Server teknik belgelerini anonimleştirip zenginleştiren LangGraph pipeline'ı.
-
-## Ne Yapar?
-
-Ham Markdown belgelerini (sunucu adları, domain bilgileri, kişi isimleri içeren) alır ve:
-
-1. **Görselleri OCR + VLM ile okur** — Qwen3-VL her ekran görüntüsünden metin çıkarır, Tesseract/EasyOCR ile doğrular
-2. **Anonimleştirir** — Hostname, NetBIOS domain, veritabanı adı, e-posta, kişi isimlerini kurgusal değerlerle değiştirir
-3. **Zenginleştirir** — Her görsele Türkçe açıklama üretir, gövdeyi Markdown formatına yapılandırır
-4. **Metadata ekler** — YAML front-matter'a ürün, konfigürasyon tipi, anahtar kelimeler, özet yazar
-5. **Kalite kontrol** — OCR güveni, eksik açıklama, PII sızıntısı denetler
-
-## Pipeline Akışı
-
-```
-trigger
-  → vision_validation_worker (paralel)
-  → anonymize
-  → code_extractor      ← kod bloklarını koruma altına alır
-  → enrich              ← Qwen hiç kod görmez
-  → code_injector       ← kodları geri yerleştirir
-  → [metadata || qa]    (paralel)
-  → finalize
-```
-
-## Kurulum
-
-```bash
-git clone <repo> docquery
-cd docquery
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-
-# Tesseract kurulumu (sistem paketi)
-# Ubuntu: sudo apt install tesseract-ocr tesseract-ocr-tur
-# macOS:  brew install tesseract tesseract-lang
-
-cp .env.example .env
-# .env içinde VLLM_URL ve VLLM_MODEL'i düzenle
-```
+`.env` değişikliklerinden sonra uygulamayı yeniden başlatın. Arayüz servisler kapalıyken de açılır; belge işleme ve soru-cevap için ilgili servislerin çalışması gerekir.
 
 ## Kullanım
 
-```bash
-# Belgelerinizi test_input/ altına koyun
-# Görselleri test-images/ altına koyun
+1. **Belgeyi yükle:** `.md` dosyasını ve ilişkili görselleri seçin. Görsel adları Markdown referanslarıyla eşleşmelidir: `images/ekran.png` → `ekran.png`.
+2. **İşlemi başlat:** Belge satırından akışı başlatıp tamamlanan adımları takip edin.
+3. **Sonucu incele:** Kalite uyarılarını kontrol edin; çıktıyı önizleyin veya indirin.
+4. **Onaylıları indeksle:** QA onaylı web belgelerini Qdrant'a aktarın.
+5. **Bilgiye sor:** Sorunuzu gönderin ve yanıtın dayandığı kaynakları inceleyin.
 
-# Toplu çalıştır
-python run_batch.py
+Yükleme sınırı toplam **25 MB ve 20 görseldir**. PDF/DOCX dönüşümü desteklenmez. İnceleme gerektiren belgeler indekslenmez; kaynağı düzeltip yeniden yükleyin.
 
-# Kalite kontrol raporu
-python check_outputs.py
+Yerel DAG ve Exchange HealthCheck dosyaları mevcutsa **Önceden üretilmiş sonuçlar** panelinden metinleri, metadata alanları ve ilişkili görselleri açılabilir. Bu panel yeni OCR/AI işlemi başlatmaz. Örnek belgeler ve kaynak görseller repoya dahil değildir.
 
-# Tek belge
-python graph.py
+## İşleme akışı
+
+```mermaid
+flowchart LR
+    A[Markdown ve görseller] --> B[VLM + OCR]
+    B --> C[Anonimleştirme]
+    C --> D[Kod bloklarını koruma]
+    D --> E[Zenginleştirme]
+    E --> F[Kodları geri yerleştirme]
+    F --> G[Metadata ve kalite kontrolü]
+    G --> H[Onaylı çıktı]
+    G --> I[İnceleme gerekli]
+    H --> J[Embedding + Qdrant]
+    J --> K[Kaynaklı soru-cevap]
 ```
 
-## Çıktılar
+Web yüklemeleri ayrı süreçlerde, sırayla işlenir. Başarısız işlemler hata olarak gösterilir; OCR bulunmaması doğrulama başarısı sayılmaz.
 
+## Komut satırı
+
+Web arayüzüne ek olarak mevcut toplu işleme ve RAG komutları kullanılabilir:
+
+```powershell
+# Belgeler: test_input/ — Görseller: test-images/
+.venv\Scripts\python run_batch.py
+.venv\Scripts\python check_outputs.py
+
+# results/approved/ belgelerini indeksle ve sorgula
+.venv\Scripts\python rag.py index
+.venv\Scripts\python rag.py ask "DAG nasıl yapılandırılır?" --top-k 5 --json
 ```
-results/
-  approved/      # QA sorunsuz geçen belgeler
-  needs_review/  # Manuel inceleme gereken belgeler
+
+Web indeksi (`WEB_QDRANT_COLLECTION`, varsayılan `docquery_web_documents`) ve CLI indeksi (`QDRANT_COLLECTION`, varsayılan `docquery_documents`) ayrıdır. Yeni indeks tamamen yüklenmeden aktif Qdrant alias'ı değiştirilmez. Belge veya embedding modeli değiştiğinde yeniden indeksleyin. Eski koleksiyonlar otomatik silinmez.
+
+## Yerel veriler
+
+| Konum | İçerik |
+| --- | --- |
+| `.web-data/` | Web yüklemeleri, işlem durumları, çıktılar ve belgeye özel sözlükler |
+| `test_input/`, `test-images/` | Komut satırı giriş belgeleri ve kaynak görseller |
+| `results/approved/` | Onaylı CLI çıktıları |
+| `results/needs_review/` | İnceleme gerektiren CLI çıktıları |
+| `anonymization_dict.json` | CLI akışının ortak anonimleştirme sözlüğü |
+
+Bu konumlar ve `.env` Git dışında tutulur. İşleme sırasında içerik yapılandırılmış model servislerine gönderilir. Uygulama tek kullanıcılı yerel kullanım içindir; kullanıcı yönetimi ve dağıtık görev kuyruğu içermez.
+
+## Diğer görünümler
+
+<details>
+<summary>Boş çalışma alanı ve mobil görünüm</summary>
+
+![Boş belge stüdyosu](docs/screenshots/studio.png)
+
+<img src="docs/screenshots/mobile.png" alt="DocQuery mobil görünüm" width="300">
+
+</details>
+
+## Geliştirme ve doğrulama
+
+Python ve JavaScript sözdizimi kontrolleri ile 28 yerel test doğrulandı. Tarayıcıda belge önizleme, indirme, mobil görünüm ve servis hata durumları kontrol edildi. Gerçek model üretimi ve uzak Qdrant üzerinde başarılı uçtan uca akış, servisler erişilemediği için doğrulanamadı.
+
+`tests/` ve `web_tests/` klasörleri Git dışında tutulur; yerel çalışma kopyanızda mevcutlarsa şu komutlarla çalıştırabilirsiniz:
+
+```powershell
+.venv\Scripts\python -m unittest discover -s tests -v
+.venv\Scripts\python -m unittest discover -s web_tests -v
 ```
-
-## Anonimleştirme Sözlüğü
-
-`anonymization_dict.json` — tüm belgeler boyunca tutarlılığı sağlar.
-Sıfırlamak için: `rm -f anonymization_dict.json`
-
-> **Not:** `test_input/`, `test-images/` ve `results/` klasörleri `.gitignore`'dadır.
-> Müşteri verisi repoya girmez.
-
-## Gereksinimler
-
-- Python 3.11+
-- vLLM sunucu (Qwen3-VL-30B, port 8001)
-- Tesseract OCR (tur+eng dil paketi)
